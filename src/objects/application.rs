@@ -13,6 +13,7 @@ pub struct Application {
     pub tickets: Mutex<Vec<Ticket>>,
 }
 
+
 impl Application {
     fn new() -> Application {
         Application {

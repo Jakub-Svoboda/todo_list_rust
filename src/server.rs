@@ -2,24 +2,33 @@
 
 pub mod objects;
 use crate::objects::ticket::Ticket;
+use crate::objects::ticket::TicketForm;
 use crate::objects::application::Application;
 
 use rocket::serde::json::Json;
-use serde::{Serialize, Deserialize};
 use std::sync::Mutex;
 use rocket::State;
 use rocket::http::Status;
 
-
-
-#[get("/")]
-fn index(app: &State<Application>) -> Json<Vec<Ticket>> {
+fn get_tickets(app: &State<Application>) -> Json<Vec<Ticket>> {
     let tickets = app.tickets.lock().unwrap().clone();
     Json(tickets)
 }
 
 
-#[get("/ticket/<id>")]
+#[get("/")]
+fn index(app: &State<Application>) -> Json<Vec<Ticket>> {
+    get_tickets(app)
+}
+
+
+#[get("/api/v1/ticket")]
+fn ticket_list(app: &State<Application>) -> Json<Vec<Ticket>> {
+    get_tickets(app)
+}
+
+
+#[get("/api/v1/ticket/<id>")]
 fn ticket_detail(id: u64, app: &State<Application>) -> Result<Json<Ticket>, Status> {
     let tickets = app.tickets.lock().unwrap();
     for ticket in tickets.iter() {
@@ -28,6 +37,18 @@ fn ticket_detail(id: u64, app: &State<Application>) -> Result<Json<Ticket>, Stat
         }
     }
     Err(Status::NotFound)
+}
+
+
+#[post("/api/v1/ticket", data = "<ticket_form>")]
+fn create_ticket(ticket_form: Json<TicketForm>, app: &State<Application>) -> Status {
+    let new_ticket = Ticket {
+        id: app.find_new_ticket_id(),
+        text: ticket_form.text.clone(),
+    };
+    let mut tickets = app.tickets.lock().unwrap();
+    tickets.push(new_ticket);
+    Status::Created
 }
 
 
@@ -42,5 +63,5 @@ fn rocket() -> _ {
 
     rocket::build()
         .manage(app)
-        .mount("/", routes![index, ticket_detail])
+        .mount("/", routes![index, ticket_list, ticket_detail, create_ticket])
 }
