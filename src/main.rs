@@ -1,10 +1,17 @@
+#[macro_use] extern crate rocket;
+
+use rocket::serde::json::Json;
 use serde::{Serialize, Deserialize};
 use std::fs::File;
 use std::io::Write;
 use std::io::Read;
+use std::sync::Mutex;
+use rocket::State;
 
 
-#[derive(Serialize, Deserialize)]
+
+
+#[derive(Serialize, Deserialize, Clone)]
 struct Ticket {
     text: String
 }
@@ -29,22 +36,22 @@ impl Ticket {
 
 #[derive(Serialize, Deserialize)]
 struct Application {
-    tickets: Vec<Ticket>,
+    tickets: Mutex<Vec<Ticket>>,
 }
 
 impl Application {
     fn new() -> Application {
         Application {
-            tickets: Vec::new()
+            tickets: Mutex::new(Vec::new()),
         }
     }
 
     fn add_ticket(&mut self, ticket: Ticket){
-        self.tickets.push(ticket);
+        self.tickets.lock().unwrap().push(ticket);
     }
 
     fn display(&self){
-        for ticket in &self.tickets {
+        for ticket in self.tickets.lock().unwrap().iter() {
             ticket.display();
         }
     }
@@ -65,29 +72,27 @@ impl Application {
 
         let tickets: Vec<Ticket> = serde_json::from_str(&contents)?;
 
-        Ok(Self { tickets })
+        Ok(Self { tickets: Mutex::new(tickets) })
     }
 }
 
-fn main() {
-    let my_ticket = Ticket::new("My first ticket".to_string());
-    let my_ticket_2 = Ticket::new("My second ticket".to_string());
 
-    let mut app = Application::new();
-    app.add_ticket(my_ticket);
-    app.add_ticket(my_ticket_2);
-    app.display();
+#[get("/")]
+fn index(app: &State<Application>) -> Json<Vec<Ticket>> {
+    let tickets = app.tickets.lock().unwrap().clone();
+    Json(tickets)
+}
 
-    if let Err(e) = app.save_to_file("tickets.json") {
-        eprintln!("Failed to save tickets: {}", e);
-    }
+#[launch]
+fn rocket() -> _ {
+    let app = match Application::load_from_file("tickets.json") {
+        Ok(app) => app,
+        Err(_) => Application {
+            tickets: Mutex::new(Vec::new()),
+        },
+    };
 
-    let loaded_app = Application::load_from_file("tickets.json").unwrap();
-    loaded_app.display();
-    let my_ticket_3 = Ticket::new("My third ticket".to_string());
-
-    if let Err(e) = app.save_to_file("tickets.json") {
-        eprintln!("Failed to save tickets: {}", e);
-    }
-
+    rocket::build()
+        .manage(app)
+        .mount("/", routes![index])
 }
