@@ -7,22 +7,24 @@ use std::io::Write;
 use std::io::Read;
 use std::sync::Mutex;
 use rocket::State;
+use rocket::http::Status;
 
 
 
 
 #[derive(Serialize, Deserialize, Clone)]
 struct Ticket {
+    id: u64,
     text: String
 }
 
 impl Ticket {
-    fn new(text: String) -> Ticket {
-        Ticket { text }
+    fn new(id: u64, text: String) -> Ticket {
+        Ticket { id, text }
     }
 
     fn display(& self){
-        println!("{}", self.text);
+        println!("{}:{}", self.id, self.text);
     }
 
     fn set_text(&mut self, text: String){
@@ -74,6 +76,16 @@ impl Application {
 
         Ok(Self { tickets: Mutex::new(tickets) })
     }
+
+    fn find_new_ticket_id(&self) -> u64 {
+        let mut max_id = 0;
+        for ticket in self.tickets.lock().unwrap().iter() {
+            if ticket.id > max_id {
+                max_id = ticket.id;
+            }
+        }
+        max_id + 1
+    }
 }
 
 
@@ -81,6 +93,18 @@ impl Application {
 fn index(app: &State<Application>) -> Json<Vec<Ticket>> {
     let tickets = app.tickets.lock().unwrap().clone();
     Json(tickets)
+}
+
+#[get("/ticket/<id>")]
+fn ticket_detail(id: u64, app: &State<Application>) -> Result<Json<Ticket>, Status> {
+    let tickets = app.tickets.lock().unwrap();
+    for ticket in tickets.iter() {
+        eprintln!("{}:{}", ticket.id, id);
+        if ticket.id == id {
+            return Ok(Json(ticket.clone()));
+        }
+    }
+    Err(Status::NotFound)
 }
 
 #[launch]
@@ -94,5 +118,5 @@ fn rocket() -> _ {
 
     rocket::build()
         .manage(app)
-        .mount("/", routes![index])
+        .mount("/", routes![index, ticket_detail])
 }
