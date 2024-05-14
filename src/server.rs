@@ -24,6 +24,7 @@ fn index(app: &State<Application>) -> Json<Vec<Ticket>> {
 
 #[get("/api/v1/ticket")]
 fn ticket_list(app: &State<Application>) -> Json<Vec<Ticket>> {
+    println!("FOO"); // TODO remove
     get_tickets(app)
 }
 
@@ -41,14 +42,26 @@ fn ticket_detail(id: u64, app: &State<Application>) -> Result<Json<Ticket>, Stat
 
 
 #[post("/api/v1/ticket", data = "<ticket_form>")]
-fn create_ticket(ticket_form: Json<TicketForm>, app: &State<Application>) -> Status {
+fn create_ticket(ticket_form: Json<TicketForm>, app: &State<Application>) -> Json<Ticket> {
     let new_ticket = Ticket {
         id: app.find_new_ticket_id(),
         text: ticket_form.text.clone(),
     };
     let mut tickets = app.tickets.lock().unwrap();
-    tickets.push(new_ticket);
-    Status::Created
+    tickets.push(new_ticket.clone());
+    Json(new_ticket)
+}
+
+#[put("/api/v1/ticket/<id>", data = "<ticket_form>")]
+fn update_ticket(id: u64, ticket_form: Json<TicketForm>, app: &State<Application>) -> Result<Json<Ticket>, Status> {
+    let mut tickets = app.tickets.lock().unwrap();
+    for ticket in tickets.iter_mut() {
+        if ticket.id == id {
+            ticket.text = ticket_form.text.clone();
+            return Ok(Json(ticket.clone()));
+        }
+    }
+    Err(Status::NotFound)
 }
 
 
@@ -63,5 +76,5 @@ fn rocket() -> _ {
 
     rocket::build()
         .manage(app)
-        .mount("/", routes![index, ticket_list, ticket_detail, create_ticket])
+        .mount("/", routes![index, ticket_list, ticket_detail, create_ticket, update_ticket])
 }
