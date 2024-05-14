@@ -21,8 +21,19 @@ impl Application {
         }
     }
 
-    pub fn add_ticket(&mut self, ticket: Ticket){
+    pub fn add_ticket(&self, ticket: Ticket){
         self.tickets.lock().unwrap().push(ticket);
+    }
+
+    pub fn edit_ticket(&self, id: u64, text: String) -> bool{
+        let mut tickets = self.tickets.lock().unwrap();
+        for ticket in tickets.iter_mut() {
+            if ticket.id == id {
+                ticket.text = text.clone();
+                return true;
+            }
+        }
+        return false;
     }
 
     pub fn display(&self){
