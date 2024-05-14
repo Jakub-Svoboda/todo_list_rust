@@ -63,6 +63,16 @@ fn update_ticket(id: u64, ticket_form: Json<TicketForm>, app: &State<Application
 }
 
 
+#[post("/api/v1/save")]
+fn save_application(app: &State<Application>) -> Result<Status, Status> {
+    if let Ok(_) = app.inner().save_to_file("tickets.json") {
+        Ok(Status::Ok)
+    } else {
+        Err(Status::InternalServerError)
+    }
+}
+
+
 #[launch]
 fn rocket() -> _ {
     let app = match Application::load_from_file("tickets.json") {
@@ -74,5 +84,5 @@ fn rocket() -> _ {
 
     rocket::build()
         .manage(app)
-        .mount("/", routes![index, ticket_list, ticket_detail, create_ticket, update_ticket])
+        .mount("/", routes![index, ticket_list, ticket_detail, create_ticket, update_ticket, save_application])
 }
