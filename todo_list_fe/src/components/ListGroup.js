@@ -4,12 +4,14 @@ function ListGroup() {
     const [items, setItems] = useState(["Ticket 1", "Ticket 2"]);
 
     useEffect(() => {
-        fetch("https://jsonplaceholder.typicode.com/todos")
+        fetch("http://localhost:8000/api/v1/ticket")
             .then(res => res.json())
             .then(data => {
                 setItems(data);
             });
     }, []);
+
+    console.log(items);
 
     return (
         <>
@@ -20,7 +22,7 @@ function ListGroup() {
                     <li className="list-group-item"
                         key={index}
                         onClick={() => console.log("Click")}>
-                        {item.title} {/* Assuming the fetched data is an array of objects with a title property */}
+                        {item.text} {}
                     </li>
                 )}
             </ul>

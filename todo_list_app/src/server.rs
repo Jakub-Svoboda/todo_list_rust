@@ -9,6 +9,7 @@ use rocket::serde::json::Json;
 use std::sync::Mutex;
 use rocket::State;
 use rocket::http::Status;
+use rocket_cors::{AllowedOrigins, CorsOptions};
 
 fn get_tickets(app: &State<Application>) -> Json<Vec<Ticket>> {
     let tickets = app.tickets.lock().unwrap().clone();
@@ -82,7 +83,14 @@ fn rocket() -> _ {
         },
     };
 
+    let cors = CorsOptions::default()
+        .allowed_origins(AllowedOrigins::all())
+        .allow_credentials(true)
+        .to_cors()
+        .expect("error while building CORS");
+
     rocket::build()
         .manage(app)
+        .attach(cors)
         .mount("/", routes![index, ticket_list, ticket_detail, create_ticket, update_ticket, save_application])
 }
