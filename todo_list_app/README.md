@@ -9,4 +9,4 @@ will launch a server at `http://localhost:8080/` that serves the app.
 
 ### Running FE react APP:
 
-    ```cd todo_list_app_fe && npm start```
+    ```cd todo_list_fe && npm start```
